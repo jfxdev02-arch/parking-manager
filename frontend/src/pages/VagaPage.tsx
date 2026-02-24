@@ -1,12 +1,11 @@
 import { useState, useEffect } from "react";
-import { useParams, useSearchParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { QRCodeSVG } from "qrcode.react";
 import { getVaga, checkin, checkout } from "../services/api";
 import type { Vaga } from "../types";
 
 export function VagaPage() {
   const { numero } = useParams<{ numero: string }>();
-  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   
   const [vaga, setVaga] = useState<Vaga | null>(null);
@@ -14,13 +13,12 @@ export function VagaPage() {
   const [nome, setNome] = useState("");
   const [pin, setPin] = useState("");
   const [message, setMessage] = useState("");
+  const [messageType, setMessageType] = useState<"success" | "error" | "">("");
   const [showPin, setShowPin] = useState<string | null>(null);
   const [animate, setAnimate] = useState<string | null>(null);
 
   useEffect(() => {
-    if (numero) {
-      loadVaga();
-    }
+    if (numero) loadVaga();
   }, [numero]);
 
   const loadVaga = async () => {
@@ -29,6 +27,7 @@ export function VagaPage() {
       setVaga(data);
     } catch (error) {
       setMessage("Erro ao carregar vaga");
+      setMessageType("error");
     } finally {
       setLoading(false);
     }
@@ -37,6 +36,7 @@ export function VagaPage() {
   const handleCheckin = async () => {
     if (!nome.trim()) {
       setMessage("Por favor, informe seu nome");
+      setMessageType("error");
       return;
     }
 
@@ -45,97 +45,100 @@ export function VagaPage() {
       if (result.pin) {
         setShowPin(result.pin);
         setAnimate("checkin");
-        setTimeout(() => {
-          setVaga((v) => v ? { ...v, ocupada: true, nomeUsuario: nome, horaEntrada: new Date().toISOString() } : v);
-          setAnimate(null);
-        }, 1500);
+        setMessage(result.message);
+        setMessageType("success");
+        setTimeout(() => setAnimate(null), 2000);
       }
-      setMessage(result.message);
     } catch (error) {
       setMessage("Erro ao fazer check-in");
+      setMessageType("error");
     }
   };
 
   const handleCheckout = async () => {
     if (!nome.trim()) {
       setMessage("Por favor, confirme seu nome");
+      setMessageType("error");
       return;
     }
 
     try {
       const result = await checkout(parseInt(numero!), nome, pin);
       setMessage(result.message);
+      setMessageType("success");
       setAnimate("checkout");
-      setTimeout(() => {
-        navigate("/");
-      }, 2000);
+      setTimeout(() => navigate("/"), 2000);
     } catch (error) {
       setMessage("Erro ao fazer check-out");
+      setMessageType("error");
     }
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-100">
-        <div className="text-xl">Carregando...</div>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="glass-card rounded-2xl p-8 text-center">
+          <div className="text-4xl mb-4 animate-spin">🚗</div>
+          <div className="text-white">Carregando...</div>
+        </div>
       </div>
     );
   }
 
-  const vagaNumero = parseInt(numero || "0");
-  const qrCodeUrl = `http://76.13.225.52:5000/api/vagas/${vagaNumero}/qrcode`;
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
-      <div className="max-w-md mx-auto">
+    <div className="min-h-screen p-4 flex items-center justify-center">
+      <div className="max-w-md w-full">
         {/* Header */}
         <div className="text-center mb-6">
-          <h1 className="text-2xl font-bold text-gray-800">Vaga {vagaNumero.toString().padStart(2, "0")}</h1>
-          <p className="text-gray-600">{vaga?.lado}</p>
+          <h1 className="text-3xl font-bold text-white mb-2">
+            Vaga {numero?.toString().padStart(2, "0")}
+          </h1>
+          <p className="text-white/60">{vaga?.lado}</p>
         </div>
 
-        {/* Animação */}
+        {/* Animação de sucesso */}
         {animate === "checkin" && (
-          <div className="text-center text-6xl animate-bounce mb-4">✅</div>
+          <div className="text-center text-6xl mb-4 animate-bounce">✅</div>
         )}
         {animate === "checkout" && (
-          <div className="text-center text-4xl animate-pulse mb-4">🚗💨</div>
+          <div className="text-center text-5xl mb-4 animate-pulse">🚗💨</div>
         )}
 
         {/* PIN Display */}
         {showPin && (
-          <div className="bg-yellow-100 border-2 border-yellow-400 rounded-lg p-4 mb-4 text-center">
-            <p className="text-sm text-yellow-800 mb-2">Seu PIN de checkout:</p>
-            <p className="text-3xl font-bold text-yellow-900">{showPin}</p>
-            <p className="text-xs text-yellow-700 mt-2">Anote este número!</p>
+          <div className="glass-card rounded-xl p-6 mb-4 text-center border-2 border-yellow-500/50">
+            <div className="text-yellow-400 text-sm mb-2">Seu PIN de checkout:</div>
+            <div className="text-5xl font-bold text-white tracking-widest">{showPin}</div>
+            <div className="text-yellow-400/60 text-xs mt-2">📱 Anote este número!</div>
           </div>
         )}
 
         {/* Vaga Livre - Check-in */}
         {!vaga?.ocupada && !showPin && (
-          <div className="bg-white rounded-xl shadow-lg p-6">
-            <div className="text-center mb-4">
-              <div className="inline-block bg-green-500 text-white px-4 py-1 rounded-full text-sm mb-4">
-                Vaga Livre
+          <div className="glass-card rounded-2xl p-6">
+            <div className="text-center mb-6">
+              <div className="inline-flex items-center gap-2 bg-green-500/20 border border-green-500/50 rounded-full px-4 py-2 text-green-400">
+                <span className="text-xl">🟢</span>
+                <span className="font-semibold">Vaga Livre</span>
               </div>
             </div>
             
             <div className="mb-4">
-              <label className="block text-gray-700 text-sm font-semibold mb-2">
-                Seu nome ou apelido:
+              <label className="block text-white/70 text-sm font-medium mb-2">
+                Seu nome ou placa:
               </label>
               <input
                 type="text"
                 value={nome}
                 onChange={(e) => setNome(e.target.value)}
-                className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none"
+                className="w-full px-4 py-4 bg-white/10 border border-white/20 rounded-xl text-white placeholder-white/40 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
                 placeholder="Ex: João ou ABC-1234"
               />
             </div>
 
             <button
               onClick={handleCheckin}
-              className="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-4 rounded-lg transition-colors text-lg"
+              className="w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-bold py-4 rounded-xl transition-all transform hover:scale-[1.02] active:scale-[0.98] text-lg shadow-lg shadow-green-500/30"
             >
               🅿️ Estacionar Aqui
             </button>
@@ -144,51 +147,52 @@ export function VagaPage() {
 
         {/* Vaga Ocupada - Check-out */}
         {vaga?.ocupada && !animate && (
-          <div className="bg-white rounded-xl shadow-lg p-6">
-            <div className="text-center mb-4">
-              <div className="inline-block bg-red-500 text-white px-4 py-1 rounded-full text-sm mb-2">
-                Vaga Ocupada
+          <div className="glass-card rounded-2xl p-6">
+            <div className="text-center mb-6">
+              <div className="inline-flex items-center gap-2 bg-red-500/20 border border-red-500/50 rounded-full px-4 py-2 text-red-400 mb-3">
+                <span className="text-xl">🔴</span>
+                <span className="font-semibold">Vaga Ocupada</span>
               </div>
-              <p className="text-gray-600">
-                por <strong>{vaga.nomeUsuario}</strong>
-              </p>
+              <div className="text-white">
+                por <strong className="text-lg">{vaga.nomeUsuario}</strong>
+              </div>
               {vaga.horaEntrada && (
-                <p className="text-sm text-gray-500">
-                  desde {new Date(vaga.horaEntrada).toLocaleTimeString("pt-BR")}
-                </p>
+                <div className="text-white/60 text-sm mt-1">
+                  ⏰ desde {new Date(vaga.horaEntrada).toLocaleTimeString("pt-BR")}
+                </div>
               )}
             </div>
 
             <div className="mb-4">
-              <label className="block text-gray-700 text-sm font-semibold mb-2">
+              <label className="block text-white/70 text-sm font-medium mb-2">
                 Confirme seu nome:
               </label>
               <input
                 type="text"
                 value={nome}
                 onChange={(e) => setNome(e.target.value)}
-                className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none"
+                className="w-full px-4 py-4 bg-white/10 border border-white/20 rounded-xl text-white placeholder-white/40 focus:outline-none focus:border-blue-500"
                 placeholder="Digite o nome do check-in"
               />
             </div>
 
             <div className="mb-4">
-              <label className="block text-gray-700 text-sm font-semibold mb-2">
+              <label className="block text-white/70 text-sm font-medium mb-2">
                 PIN (se tiver):
               </label>
               <input
                 type="text"
                 value={pin}
                 onChange={(e) => setPin(e.target.value)}
-                className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none"
-                placeholder="4 dígitos"
+                className="w-full px-4 py-4 bg-white/10 border border-white/20 rounded-xl text-white placeholder-white/40 focus:outline-none focus:border-blue-500 text-center text-2xl tracking-widest"
+                placeholder="****"
                 maxLength={4}
               />
             </div>
 
             <button
               onClick={handleCheckout}
-              className="w-full bg-red-500 hover:bg-red-600 text-white font-bold py-4 rounded-lg transition-colors text-lg"
+              className="w-full bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white font-bold py-4 rounded-xl transition-all transform hover:scale-[1.02] active:scale-[0.98] text-lg shadow-lg shadow-red-500/30"
             >
               🚗 Liberar Vaga
             </button>
@@ -196,16 +200,23 @@ export function VagaPage() {
         )}
 
         {/* QR Code */}
-        <div className="mt-6 bg-white rounded-xl shadow-lg p-6 text-center">
-          <p className="text-sm text-gray-600 mb-3">QR Code desta vaga:</p>
-          <div className="inline-block bg-white p-2 rounded-lg border">
-            <QRCodeSVG value={`http://76.13.225.52:5173/vaga/${vagaNumero}?action=checkin`} size={120} />
+        <div className="glass-card rounded-xl p-4 mt-6 text-center">
+          <div className="text-white/60 text-sm mb-3">QR Code desta vaga:</div>
+          <div className="inline-block bg-white p-3 rounded-xl">
+            <QRCodeSVG 
+              value={`http://76.13.225.52:5173/vaga/${numero}?action=checkin`} 
+              size={120} 
+            />
           </div>
         </div>
 
         {/* Mensagem */}
         {message && (
-          <div className="mt-4 bg-blue-100 text-blue-800 px-4 py-3 rounded-lg text-center">
+          <div className={`mt-4 rounded-xl px-4 py-3 text-center ${
+            messageType === "success" 
+              ? "bg-green-500/20 border border-green-500/50 text-green-400" 
+              : "bg-red-500/20 border border-red-500/50 text-red-400"
+          }`}>
             {message}
           </div>
         )}
@@ -213,7 +224,7 @@ export function VagaPage() {
         {/* Voltar */}
         <button
           onClick={() => navigate("/")}
-          className="mt-6 w-full bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-3 rounded-lg transition-colors"
+          className="mt-6 w-full glass-card hover:bg-white/20 text-white font-medium py-3 rounded-xl transition-all"
         >
           ← Voltar ao Mapa
         </button>
