@@ -95,6 +95,11 @@ export function ParkingMap({ vagas, status, loading }: ParkingMapProps) {
           {/* Isometric View Container */}
           <div className="isometric-view">
             
+            {/* GUARITA NO TOPO */}
+            <div className="gatehouse-top">
+              <GateHouse />
+            </div>
+
             {/* Fluxo de entrada/saída */}
             <div className="flow-arrows">
               <div className="flow-arrow entry">
@@ -112,7 +117,7 @@ export function ParkingMap({ vagas, status, loading }: ParkingMapProps) {
             </div>
 
             {/* LINHA SUPERIOR - Vagas 01-25 */}
-            <div className="mb-6">
+            <div className="parking-row-wrapper">
               <div className="parking-row-label">Vagas 01 - 25</div>
               <div className="parking-row">
                 {linhaSuperior.map((vaga) => (
@@ -125,13 +130,11 @@ export function ParkingMap({ vagas, status, loading }: ParkingMapProps) {
               </div>
             </div>
 
-            {/* Corredor Central com Guarita */}
-            <div className="road-corridor">
-              <GateHouse />
-            </div>
+            {/* Corredor Central */}
+            <div className="road-corridor"></div>
 
             {/* LINHA INFERIOR - Vagas 26-50 */}
-            <div className="mt-6">
+            <div className="parking-row-wrapper">
               <div className="parking-row-label">Vagas 26 - 50</div>
               <div className="parking-row">
                 {linhaInferior.map((vaga) => (

@@ -9,10 +9,21 @@ export function useSignalR(
   onStatusGeral?: (event: StatusGeralEvent) => void
 ) {
   const connectionRef = useRef<signalR.HubConnection | null>(null);
-  const mountedRef = useRef(true);
+  const isConnectingRef = useRef(false);
+  const isMountedRef = useRef(true);
+  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  useEffect(() => {
-    mountedRef.current = true;
+  const startConnection = useCallback(async () => {
+    // Evita múltiplas conexões simultâneas
+    if (isConnectingRef.current || connectionRef.current) {
+      return;
+    }
+
+    if (!isMountedRef.current) {
+      return;
+    }
+
+    isConnectingRef.current = true;
 
     const connection = new signalR.HubConnectionBuilder()
       .withUrl(HUB_URL, {
@@ -20,20 +31,26 @@ export function useSignalR(
         transport: signalR.HttpTransportType.WebSockets
       })
       .withAutomaticReconnect({
-        nextRetryDelayInMilliseconds: () => 5000
+        nextRetryDelayInMilliseconds: (retryContext) => {
+          // Exponential backoff: 0s, 2s, 4s, 8s, 16s, 30s (max)
+          if (retryContext.elapsedMilliseconds < 60000) {
+            return Math.min(1000 * Math.pow(2, retryContext.previousRetryCount), 30000);
+          }
+          return 30000; // Max 30 seconds
+        }
       })
       .build();
 
     connectionRef.current = connection;
 
     connection.on("VagaAtualizada", (event: VagaAtualizadaEvent) => {
-      if (mountedRef.current) {
+      if (isMountedRef.current) {
         onVagaAtualizada?.(event);
       }
     });
 
     connection.on("StatusGeral", (event: StatusGeralEvent) => {
-      if (mountedRef.current) {
+      if (isMountedRef.current) {
         onStatusGeral?.(event);
       }
     });
@@ -49,25 +66,75 @@ export function useSignalR(
 
     connection.onclose(() => {
       console.log("SignalR conexão fechada");
+      connectionRef.current = null;
+      isConnectingRef.current = false;
+      
+      // Tentar reconectar após 5 segundos se ainda montado
+      if (isMountedRef.current) {
+        reconnectTimeoutRef.current = setTimeout(() => {
+          if (isMountedRef.current && !connectionRef.current) {
+            startConnection();
+          }
+        }, 5000);
+      }
     });
 
-    connection
-      .start()
-      .then(() => {
-        if (mountedRef.current) {
-          console.log("SignalR conectado!");
-          return connection.invoke("JoinParking");
-        }
-      })
-      .catch((err) => {
-        console.error("SignalR erro:", err);
-      });
+    try {
+      await connection.start();
+      if (isMountedRef.current) {
+        console.log("SignalR conectado!");
+        await connection.invoke("JoinParking");
+        isConnectingRef.current = false;
+      } else {
+        // Se desmontou durante a conexão, fecha imediatamente
+        await connection.stop();
+        connectionRef.current = null;
+        isConnectingRef.current = false;
+      }
+    } catch (err) {
+      console.error("SignalR erro:", err);
+      connectionRef.current = null;
+      isConnectingRef.current = false;
+      
+      // Tentar reconectar após 5 segundos
+      if (isMountedRef.current) {
+        reconnectTimeoutRef.current = setTimeout(() => {
+          if (isMountedRef.current) {
+            startConnection();
+          }
+        }, 5000);
+      }
+    }
+  }, [onVagaAtualizada, onStatusGeral]);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    startConnection();
 
     return () => {
-      mountedRef.current = false;
-      connection.stop().catch(() => {});
+      isMountedRef.current = false;
+      
+      // Limpar timeout de reconexão
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+        reconnectTimeoutRef.current = null;
+      }
+      
+      // Fechar conexão de forma segura
+      const connection = connectionRef.current;
+      connectionRef.current = null;
+      isConnectingRef.current = false;
+      
+      if (connection) {
+        connection.stop().catch((err) => {
+          // Ignora erros de stop - conexão pode já estar fechada
+          if (err && !String(err).includes('stop() was called')) {
+            console.error('Erro ao fechar conexão:', err);
+          }
+        });
+      }
     };
-  }, []);
+  }, [startConnection]);
 }
 
 export function useSignalRConnection() {
