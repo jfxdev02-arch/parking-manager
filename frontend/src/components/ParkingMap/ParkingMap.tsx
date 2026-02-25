@@ -28,7 +28,7 @@ export function ParkingMap({ vagas, status, loading }: ParkingMapProps) {
   }
 
   return (
-    <div className="parking-container" style={{ padding: 20 }}>
+    <div className="parking-container">
       {/* Header */}
       <div className="header">
         <h1>🅿️ Estacionamento</h1>
@@ -59,39 +59,33 @@ export function ParkingMap({ vagas, status, loading }: ParkingMapProps) {
         </div>
       )}
 
-      {/* Mapa */}
-      <div style={{ maxWidth: 1100, margin: "0 auto" }}>
+      {/* Mapa 3D */}
+      <div className="parking-map">
         
         {/* Guarita */}
         <div style={{ textAlign: "center", marginBottom: 20 }}>
           <div className="guarita">
             <span className="seta seta-entrada">→ ENTRADA</span>
-            <span>🏠 GUARITA</span>
+            <span>🏠</span>
             <span className="seta seta-saida">SAÍDA ←</span>
           </div>
         </div>
 
-        {/* Linha 1: Vagas 01-25 */}
-        <div style={{ textAlign: "center", marginBottom: 5, color: "rgba(255,255,255,0.5)", fontSize: 12 }}>
-          VAGAS 01 - 25
-        </div>
+        {/* LINHA 1: Vagas 01-25 */}
+        <div className="linha-label">Vagas 01 - 25</div>
         <div className="vaga-linha">
           {linha1.map(v => (
             <ParkingSpot key={v.numero} vaga={v} onClick={() => handleClick(v.numero)} />
           ))}
         </div>
 
-        {/* Corredor */}
-        <div className="corredor">
-          <div className="corredor-linha"></div>
-          <span style={{ color: "rgba(255,255,255,0.4)", fontSize: 12 }}>CORREDOR</span>
-          <div className="corredor-linha"></div>
+        {/* CORREDOR - vai do início ao fim */}
+        <div className="corredor-container" style={{ height: 50 }}>
+          <div className="corredor"></div>
         </div>
 
-        {/* Linha 2: Vagas 26-50 */}
-        <div style={{ textAlign: "center", marginBottom: 5, color: "rgba(255,255,255,0.5)", fontSize: 12 }}>
-          VAGAS 26 - 50
-        </div>
+        {/* LINHA 2: Vagas 26-50 */}
+        <div className="linha-label">Vagas 26 - 50</div>
         <div className="vaga-linha">
           {linha2.map(v => (
             <ParkingSpot key={v.numero} vaga={v} onClick={() => handleClick(v.numero)} />
@@ -101,9 +95,15 @@ export function ParkingMap({ vagas, status, loading }: ParkingMapProps) {
       </div>
 
       {/* Legenda */}
-      <div style={{ textAlign: "center", marginTop: 20, color: "rgba(255,255,255,0.5)", fontSize: 12 }}>
-        <span style={{ marginRight: 20 }}>🟢 Livre</span>
-        <span>🔴 Ocupada</span>
+      <div className="legenda">
+        <div className="legenda-item">
+          <div className="legenda-cor livre"></div>
+          <span>Livre</span>
+        </div>
+        <div className="legenda-item">
+          <div className="legenda-cor ocupada"></div>
+          <span>Ocupada</span>
+        </div>
       </div>
     </div>
   );
