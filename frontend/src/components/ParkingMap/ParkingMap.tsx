@@ -14,7 +14,10 @@ export function ParkingMap({ vagas, status, loading }: ParkingMapProps) {
   const linha1 = vagas.filter(v => v.numero >= 1 && v.numero <= 25).sort((a, b) => a.numero - b.numero);
   const linha2 = vagas.filter(v => v.numero >= 26 && v.numero <= 50).sort((a, b) => a.numero - b.numero);
 
-  const handleClick = (numero: number) => navigate(`/vaga/${numero}?action=checkin`);
+  const handleClick = (numero: number) => {
+    console.log("Clicou na vaga:", numero);
+    navigate(`/vaga/${numero}?action=checkin`);
+  };
 
   if (loading) {
     return (
@@ -29,12 +32,10 @@ export function ParkingMap({ vagas, status, loading }: ParkingMapProps) {
 
   return (
     <div className="parking-container">
-      {/* Header */}
       <div className="header">
         <h1>🅿️ Estacionamento</h1>
       </div>
 
-      {/* Stats */}
       {status && (
         <div className="stats">
           <div className="stat stat-livres">
@@ -52,17 +53,11 @@ export function ParkingMap({ vagas, status, loading }: ParkingMapProps) {
         </div>
       )}
 
-      {/* Alerta */}
       {status && status.vagasLivres <= 5 && (
-        <div className="alerta">
-          ⚠️ Apenas {status.vagasLivres} vagas disponíveis!
-        </div>
+        <div className="alerta">⚠️ Apenas {status.vagasLivres} vagas disponíveis!</div>
       )}
 
-      {/* Mapa 3D */}
       <div className="parking-map">
-        
-        {/* Guarita */}
         <div style={{ textAlign: "center", marginBottom: 20 }}>
           <div className="guarita">
             <span className="seta seta-entrada">→ ENTRADA</span>
@@ -71,7 +66,6 @@ export function ParkingMap({ vagas, status, loading }: ParkingMapProps) {
           </div>
         </div>
 
-        {/* LINHA 1: Vagas 01-25 */}
         <div className="linha-label">Vagas 01 - 25</div>
         <div className="vaga-linha">
           {linha1.map(v => (
@@ -79,22 +73,18 @@ export function ParkingMap({ vagas, status, loading }: ParkingMapProps) {
           ))}
         </div>
 
-        {/* CORREDOR - vai do início ao fim */}
-        <div className="corredor-container" style={{ height: 50 }}>
+        <div className="corredor-container">
           <div className="corredor"></div>
         </div>
 
-        {/* LINHA 2: Vagas 26-50 */}
         <div className="linha-label">Vagas 26 - 50</div>
         <div className="vaga-linha">
           {linha2.map(v => (
             <ParkingSpot key={v.numero} vaga={v} onClick={() => handleClick(v.numero)} />
           ))}
         </div>
-
       </div>
 
-      {/* Legenda */}
       <div className="legenda">
         <div className="legenda-item">
           <div className="legenda-cor livre"></div>
