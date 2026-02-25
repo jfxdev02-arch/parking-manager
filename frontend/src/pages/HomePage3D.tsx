@@ -17,8 +17,14 @@ export function HomePage3D() {
   const [currentPalette, setCurrentPalette] = useState<ColorPalette>(defaultPalette);
   const [selectedPaletteName, setSelectedPaletteName] = useState<string>("cyber");
 
-  const handleVagaClick = (numero: number) => navigate(\`/vaga/\${numero}?action=checkin\`);
-  const handlePaletteChange = (name: string) => { setSelectedPaletteName(name); setCurrentPalette(palettes[name] || defaultPalette); };
+  const handleVagaClick = (numero: number) => {
+    navigate("/vaga/" + numero + "?action=checkin");
+  };
+  
+  const handlePaletteChange = (name: string) => {
+    setSelectedPaletteName(name);
+    setCurrentPalette(palettes[name] || defaultPalette);
+  };
 
   if (loading) {
     return (
