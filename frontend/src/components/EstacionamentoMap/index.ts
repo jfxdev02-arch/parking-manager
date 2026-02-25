@@ -1,1 +1,1 @@
-export { default } from './EstacionamentoMap';
+export { EstacionamentoMap } from "./EstacionamentoMap";

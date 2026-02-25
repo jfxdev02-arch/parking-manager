@@ -45,4 +45,4 @@ const Legenda: React.FC<LegendaProps> = ({
   );
 };
 
-export default Legenda;
+export { Legenda };

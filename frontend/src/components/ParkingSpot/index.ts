@@ -1,0 +1,1 @@
+export { ParkingSpot } from "./ParkingSpot";

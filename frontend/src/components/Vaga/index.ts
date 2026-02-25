@@ -1,1 +1,1 @@
-export { default } from './Vaga';
+export { Vaga } from "./Vaga";

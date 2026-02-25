@@ -1,263 +1,191 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import Vaga from '../Vaga/Vaga';
-import Legenda from '../Legenda/Legenda';
+import { useNavigate } from "react-router-dom";
+import { Vaga } from "../Vaga";
+import type { Vaga as VagaType, StatusGeral } from "../../types";
 
-interface Veiculo {
-  placa: string;
-  proprietario?: string;
-  entrada?: string;
+interface EstacionamentoMapProps {
+  vagas: VagaType[];
+  status: StatusGeral | null;
+  loading: boolean;
 }
 
-interface VagaData {
-  numero: number;
-  status: 'livre' | 'ocupada' | 'reservada';
-  veiculo?: Veiculo;
-}
+export function EstacionamentoMap({ vagas, status, loading }: EstacionamentoMapProps) {
+  const navigate = useNavigate();
 
-const API_BASE = 'http://76.13.225.52:5002/api';
-
-const EstacionamentoMap: React.FC = () => {
-  const [vagas, setVagas] = useState<VagaData[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  // Inicializar vagas
-  const inicializarVagas = useCallback(() => {
-    const vagasIniciais: VagaData[] = [];
-    for (let i = 1; i <= 50; i++) {
-      vagasIniciais.push({
-        numero: i,
-        status: 'livre'
-      });
-    }
-    return vagasIniciais;
-  }, []);
-
-  // Buscar dados do backend
-  const fetchVagas = useCallback(async () => {
-    try {
-      const response = await fetch(`${API_BASE}/vagas`);
-      if (!response.ok) throw new Error('Falha ao carregar vagas');
-      const data = await response.json();
-      
-      // Se o backend retornar dados, mapear para o formato local
-      if (Array.isArray(data) && data.length > 0) {
-        const vagasAtualizadas = inicializarVagas().map(vagaBase => {
-          const vagaBackend = data.find((v: any) => v.numero === vagaBase.numero || v.id === vagaBase.numero);
-          if (vagaBackend) {
-            return {
-              numero: vagaBase.numero,
-              status: vagaBackend.status || 'livre',
-              veiculo: vagaBackend.veiculo ? {
-                placa: vagaBackend.veiculo.placa || '',
-                proprietario: vagaBackend.veiculo.proprietario || vagaBackend.veiculo.nome || '',
-                entrada: vagaBackend.veiculo.entrada || vagaBackend.entrada || ''
-              } : undefined
-            };
-          }
-          return vagaBase;
-        });
-        setVagas(vagasAtualizadas);
-      } else {
-        setVagas(inicializarVagas());
-      }
-      setError(null);
-    } catch (err) {
-      console.error('Erro ao buscar vagas:', err);
-      setVagas(inicializarVagas());
-      setError('Usando dados locais - Backend indisponível');
-    } finally {
-      setLoading(false);
-    }
-  }, [inicializarVagas]);
-
-  useEffect(() => {
-    fetchVagas();
-    // Atualizar a cada 10 segundos
-    const interval = setInterval(fetchVagas, 10000);
-    return () => clearInterval(interval);
-  }, [fetchVagas]);
-
-  // Calcular estatísticas
-  const stats = {
-    total: vagas.length,
-    livres: vagas.filter(v => v.status === 'livre').length,
-    ocupadas: vagas.filter(v => v.status === 'ocupada').length,
-    reservadas: vagas.filter(v => v.status === 'reservada').length
-  };
-
-  // Dividir vagas em lados
-  const vagasEsquerda = vagas.filter(v => v.numero >= 1 && v.numero <= 25);
-  const vagasDireita = vagas.filter(v => v.numero >= 26 && v.numero <= 50);
+  // Linha superior: vagas 01-25 (Lado Esquerdo)
+  // Linha inferior: vagas 26-50 (Lado Direito)
+  const linhaSuperior = vagas.filter((v) => v.numero >= 1 && v.numero <= 25).sort((a, b) => a.numero - b.numero);
+  const linhaInferior = vagas.filter((v) => v.numero >= 26 && v.numero <= 50).sort((a, b) => a.numero - b.numero);
 
   const handleVagaClick = (numero: number) => {
-    console.log('Vaga clicada:', numero);
-    // Aqui pode abrir modal de registro/entrada
+    navigate(`/vaga/${numero}?action=checkin`);
   };
-
-  // Ícones SVG
-  const EntryArrow = () => (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <path d="M5 12h14" />
-      <path d="M12 5l7 7-7 7" />
-    </svg>
-  );
-
-  const ExitArrow = () => (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <path d="M19 12H5" />
-      <path d="M12 19l-7-7 7-7" />
-    </svg>
-  );
-
-  const GuaritaIcon = () => (
-    <svg className="guarita-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-      <path d="M3 21h18" strokeLinecap="round" />
-      <path d="M5 21V7l7-4 7 4v14" strokeLinecap="round" strokeLinejoin="round" />
-      <rect x="9" y="13" width="6" height="8" fill="rgba(255,255,255,0.1)" />
-      <rect x="6" y="9" width="3" height="3" rx="0.5" fill="rgba(100,180,255,0.4)" />
-      <rect x="15" y="9" width="3" height="3" rx="0.5" fill="rgba(100,180,255,0.4)" />
-    </svg>
-  );
 
   if (loading) {
     return (
-      <div className="parking-map-container">
-        <div className="parking-lot" style={{ minHeight: '400px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div className="loading-pulse" style={{ color: '#94a3b8', fontSize: '18px' }}>
-            Carregando mapa...
-          </div>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="glass-card rounded-2xl p-8 text-center">
+          <div className="text-4xl mb-4 animate-bounce">🚗</div>
+          <div className="text-white text-lg">Carregando...</div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="parking-map-container">
-      {/* Legenda */}
-      <Legenda 
-        totalVagas={stats.total}
-        vagasLivres={stats.livres}
-        vagasOcupadas={stats.ocupadas}
-        vagasReservadas={stats.reservadas}
-      />
+    <div className="min-h-screen p-4 md:p-8 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+      {/* Header */}
+      <div className="max-w-6xl mx-auto mb-8">
+        <div className="glass-card rounded-2xl p-6">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+            <h1 className="text-2xl md:text-3xl font-bold text-white flex items-center gap-3">
+              <span className="text-4xl">🅿️</span>
+              Estacionamento
+            </h1>
+            
+            {status && (
+              <div className="flex flex-wrap items-center gap-4">
+                <div className="bg-green-500/20 border border-green-500/50 rounded-full px-4 py-2 flex items-center gap-2">
+                  <span className="text-xl">🟢</span>
+                  <div className="text-center">
+                    <div className="text-green-400 text-xs">Livres</div>
+                    <div className="text-white font-bold">{status.vagasLivres}</div>
+                  </div>
+                </div>
+                <div className="bg-red-500/20 border border-red-500/50 rounded-full px-4 py-2 flex items-center gap-2">
+                  <span className="text-xl">🔴</span>
+                  <div className="text-center">
+                    <div className="text-red-400 text-xs">Ocupadas</div>
+                    <div className="text-white font-bold">{status.vagasOcupadas}</div>
+                  </div>
+                </div>
+                <div className="bg-blue-500/20 border border-blue-500/50 rounded-full px-4 py-2 flex items-center gap-2">
+                  <span className="text-xl">📊</span>
+                  <div className="text-center">
+                    <div className="text-blue-400 text-xs">Total</div>
+                    <div className="text-white font-bold">{status.totalVagas}</div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
 
-      {/* Stats Bar */}
-      <div className="stats-bar fade-in">
-        <div className="stat-item">
-          <div className="stat-value">{stats.livres}</div>
-          <div className="stat-label">Vagas Livres</div>
-        </div>
-        <div className="stat-item">
-          <div className="stat-value">{stats.ocupadas}</div>
-          <div className="stat-label">Ocupadas</div>
-        </div>
-        <div className="stat-item">
-          <div className="stat-value">{stats.reservadas}</div>
-          <div className="stat-label">Reservadas</div>
-        </div>
-        <div className="stat-item">
-          <div className="stat-value">{Math.round((stats.livres / stats.total) * 100)}%</div>
-          <div className="stat-label">Disponibilidade</div>
+          {status && status.vagasLivres <= 5 && (
+            <div className="mt-4 bg-red-500/30 border border-red-500 rounded-lg px-4 py-3 text-white text-center animate-pulse">
+              ⚠️ Atenção! Apenas {status.vagasLivres} vagas disponíveis!
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Error Banner */}
-      {error && (
-        <div style={{
-          background: 'rgba(239, 68, 68, 0.1)',
-          border: '1px solid rgba(239, 68, 68, 0.3)',
-          borderRadius: '8px',
-          padding: '12px',
-          marginBottom: '20px',
-          color: '#fca5a5',
-          fontSize: '13px',
-          textAlign: 'center'
-        }}>
-          ⚠️ {error}
-        </div>
-      )}
-
-      {/* Parking Lot Map */}
-      <div className="parking-lot">
-        {/* Entry/Exit Indicators */}
-        <div style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          marginBottom: '30px',
-          padding: '0 20px'
-        }}>
-          <div className="flow-arrow entry">
-            <EntryArrow />
-            <span>ENTRADA</span>
-          </div>
-          <div className="flow-arrow exit">
-            <span>SAÍDA</span>
-            <ExitArrow />
-          </div>
-        </div>
-
-        {/* Main Parking Grid */}
-        <div style={{
-          display: 'flex',
-          gap: '20px',
-          justifyContent: 'center',
-          alignItems: 'flex-start'
-        }}>
-          {/* Left Side - Vagas 01-25 */}
-          <div className="parking-side">
-            <div className="parking-side-label">Lado A • Vagas 01-25</div>
-            <div className="stagger-children" style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', maxWidth: '680px', justifyContent: 'center' }}>
-              {vagasEsquerda.map(vaga => (
-                <Vaga
-                  key={vaga.numero}
-                  numero={vaga.numero}
-                  status={vaga.status}
-                  veiculo={vaga.veiculo}
-                  onClick={() => handleVagaClick(vaga.numero)}
-                />
-              ))}
+      {/* Legenda */}
+      <div className="max-w-6xl mx-auto mb-4 flex justify-end">
+        <div className="glass-card rounded-xl p-4 text-white text-sm">
+          <div className="flex items-center gap-6">
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 rounded bg-gradient-to-br from-green-500 to-green-600"></div>
+              <span>Livre</span>
             </div>
-          </div>
-
-          {/* Center - Aisle with Guard Booth */}
-          <div className="parking-center">
-            <div className="guarita">
-              <GuaritaIcon />
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 rounded bg-gradient-to-br from-red-500 to-red-600"></div>
+              <span>Ocupada</span>
             </div>
-            <div className="center-line"></div>
-          </div>
-
-          {/* Right Side - Vagas 26-50 */}
-          <div className="parking-side">
-            <div className="parking-side-label">Lado B • Vagas 26-50</div>
-            <div className="stagger-children" style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', maxWidth: '680px', justifyContent: 'center' }}>
-              {vagasDireita.map(vaga => (
-                <Vaga
-                  key={vaga.numero}
-                  numero={vaga.numero}
-                  status={vaga.status}
-                  veiculo={vaga.veiculo}
-                  onClick={() => handleVagaClick(vaga.numero)}
-                />
-              ))}
+            <div className="flex items-center gap-2 text-green-400">
+              <span>→ ENTRADA</span>
+            </div>
+            <div className="flex items-center gap-2 text-orange-400">
+              <span>SAÍDA ←</span>
             </div>
           </div>
         </div>
+      </div>
 
-        {/* Footer info */}
-        <div style={{
-          marginTop: '30px',
-          textAlign: 'center',
-          color: '#475569',
-          fontSize: '11px',
-          letterSpacing: '1px'
-        }}>
-          ESTACIONAMENTO INTELIGENTE • ATUALIZAÇÃO AUTOMÁTICA A CADA 10 SEGUNDOS
+      {/* MAPA DO ESTACIONAMENTO - PERSPECTIVA */}
+      <div className="max-w-6xl mx-auto">
+        <div className="relative bg-gradient-to-br from-gray-700 to-gray-800 rounded-3xl p-8 shadow-2xl overflow-hidden">
+          
+          {/* Setas de fluxo */}
+          <div className="absolute left-4 top-1/2 -translate-y-1/2 text-green-400 text-4xl animate-pulse z-10">
+            →
+          </div>
+          <div className="absolute right-4 top-1/2 -translate-y-1/2 text-orange-400 text-4xl animate-pulse z-10">
+            ←
+          </div>
+
+          {/* Container com perspectiva */}
+          <div 
+            className="relative mx-auto"
+            style={{
+              perspective: "1000px",
+            }}
+          >
+            {/* Área do estacionamento */}
+            <div 
+              className="relative bg-gray-600 rounded-xl p-6"
+              style={{
+                transform: "rotateX(25deg)",
+                transformStyle: "preserve-3d",
+                boxShadow: "0 40px 80px rgba(0,0,0,0.5)"
+              }}
+            >
+              {/* LINHA SUPERIOR - Vagas 01-25 */}
+              <div className="mb-6">
+                <div className="text-white/60 text-xs font-medium mb-2 text-center">
+                  VAGAS 01-25
+                </div>
+                <div className="flex justify-center gap-1 flex-wrap">
+                  {linhaSuperior.map((vaga) => (
+                    <Vaga 
+                      key={vaga.numero} 
+                      vaga={vaga} 
+                      onClick={() => handleVagaClick(vaga.numero)} 
+                    />
+                  ))}
+                </div>
+              </div>
+
+              {/* CORREDOR CENTRAL */}
+              <div className="flex items-center justify-center py-4 my-4">
+                <div className="flex-1 h-1 bg-yellow-400/50 rounded"></div>
+                <div className="mx-4 px-4 py-2 bg-indigo-600 rounded-lg text-white text-sm font-semibold shadow-lg">
+                  🏠 GUARITA
+                </div>
+                <div className="flex-1 h-1 bg-yellow-400/50 rounded"></div>
+              </div>
+
+              {/* LINHA INFERIOR - Vagas 26-50 */}
+              <div className="mt-6">
+                <div className="text-white/60 text-xs font-medium mb-2 text-center">
+                  VAGAS 26-50
+                </div>
+                <div className="flex justify-center gap-1 flex-wrap">
+                  {linhaInferior.map((vaga) => (
+                    <Vaga 
+                      key={vaga.numero} 
+                      vaga={vaga} 
+                      onClick={() => handleVagaClick(vaga.numero)} 
+                    />
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Labels de entrada/saída */}
+          <div className="flex justify-between mt-4 px-8">
+            <div className="text-green-400 font-semibold text-sm">
+              ⬇️ ENTRADA
+            </div>
+            <div className="text-orange-400 font-semibold text-sm">
+              SAÍDA ⬆️
+            </div>
+          </div>
+        </div>
+
+        {/* Rodapé */}
+        <div className="mt-6 text-center text-white/50 text-sm">
+          Clique em uma vaga para fazer check-in ou check-out
         </div>
       </div>
     </div>
   );
-};
-
-export default EstacionamentoMap;
+}
